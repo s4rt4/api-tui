@@ -54,6 +54,19 @@ pub fn build_effective(
         None => None,
     };
 
+    // Derive a Content-Type from the body's declared `kind` (json/form/xml/text)
+    // unless the request already sets one explicitly.
+    if body.is_some() {
+        let has_ct = headers
+            .iter()
+            .any(|(k, _)| k.eq_ignore_ascii_case("content-type"));
+        if !has_ct {
+            if let Some(ct) = content_type_for(req.body.as_ref().map(|b| b.kind.as_str())) {
+                headers.push(("Content-Type".to_string(), ct.to_string()));
+            }
+        }
+    }
+
     Ok(EffectiveRequest {
         method: req.method.to_ascii_uppercase(),
         url,
@@ -61,6 +74,17 @@ pub fn build_effective(
         headers,
         body,
     })
+}
+
+/// Map a body `kind` to its conventional Content-Type.
+fn content_type_for(kind: Option<&str>) -> Option<&'static str> {
+    match kind.map(|k| k.to_ascii_lowercase()).as_deref() {
+        Some("json") => Some("application/json"),
+        Some("form") => Some("application/x-www-form-urlencoded"),
+        Some("xml") => Some("application/xml"),
+        Some("text") => Some("text/plain"),
+        _ => None,
+    }
 }
 
 fn resolve_url(url: &str, base_url: Option<&str>) -> String {
@@ -140,12 +164,70 @@ mod tests {
         env.insert("val".into(), "hello".into());
         let built = build_effective(&r, Some("https://x.com"), &env).unwrap();
         assert_eq!(built.url, "https://x.com/u/42");
+        // Authorization (user) plus an auto Content-Type from the json body kind.
         assert_eq!(
             built.headers,
-            vec![("Authorization".into(), "Bearer abc".into())]
+            vec![
+                ("Authorization".into(), "Bearer abc".into()),
+                ("Content-Type".into(), "application/json".into()),
+            ]
         );
         assert_eq!(built.query, vec![("page".into(), "1".into())]);
         assert_eq!(built.body.as_deref(), Some("{\"x\": \"hello\"}"));
+    }
+
+    fn req_with_body(kind: &str, content: &str) -> Request {
+        let mut r = req("POST", "/x");
+        r.body = Some(crate::collection::model::Body {
+            kind: kind.into(),
+            content: content.into(),
+        });
+        r
+    }
+
+    #[test]
+    fn form_body_gets_urlencoded_content_type() {
+        let r = req_with_body("form", "a=1&b=2");
+        let built = build_effective(&r, None, &HashMap::new()).unwrap();
+        assert!(built.headers.contains(&(
+            "Content-Type".into(),
+            "application/x-www-form-urlencoded".into()
+        )));
+    }
+
+    #[test]
+    fn explicit_content_type_is_not_overridden() {
+        let mut r = req_with_body("json", "{}");
+        r.headers
+            .insert("Content-Type".into(), "application/vnd.api+json".into());
+        let built = build_effective(&r, None, &HashMap::new()).unwrap();
+        let cts: Vec<_> = built
+            .headers
+            .iter()
+            .filter(|(k, _)| k.eq_ignore_ascii_case("content-type"))
+            .collect();
+        assert_eq!(cts.len(), 1);
+        assert_eq!(cts[0].1, "application/vnd.api+json");
+    }
+
+    #[test]
+    fn no_body_means_no_content_type() {
+        let r = req("GET", "/x");
+        let built = build_effective(&r, None, &HashMap::new()).unwrap();
+        assert!(!built
+            .headers
+            .iter()
+            .any(|(k, _)| k.eq_ignore_ascii_case("content-type")));
+    }
+
+    #[test]
+    fn unknown_body_kind_adds_no_content_type() {
+        let r = req_with_body("binary", "stuff");
+        let built = build_effective(&r, None, &HashMap::new()).unwrap();
+        assert!(!built
+            .headers
+            .iter()
+            .any(|(k, _)| k.eq_ignore_ascii_case("content-type")));
     }
 
     #[test]
