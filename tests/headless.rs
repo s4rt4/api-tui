@@ -20,7 +20,11 @@ fn cli(collection: PathBuf, name: &str) -> Cli {
 /// Write a one-request collection to a unique temp file; returns its path.
 fn write_collection(tag: &str, toml: &str) -> PathBuf {
     let mut p = std::env::temp_dir();
-    p.push(format!("apitester-headless-{}-{}.toml", std::process::id(), tag));
+    p.push(format!(
+        "apitester-headless-{}-{}.toml",
+        std::process::id(),
+        tag
+    ));
     std::fs::write(&p, toml).unwrap();
     p
 }
@@ -39,7 +43,9 @@ async fn success_returns_zero() {
         server.uri()
     );
     let p = write_collection("ok", &toml);
-    let code = headless::run(&cli(p.clone(), "ping"), "ping").await.unwrap();
+    let code = headless::run(&cli(p.clone(), "ping"), "ping")
+        .await
+        .unwrap();
     let _ = std::fs::remove_file(&p);
     assert_eq!(code, 0);
 }
@@ -67,7 +73,9 @@ async fn http_error_status_returns_one() {
 async fn unknown_request_returns_three() {
     let toml = "[[requests]]\nname = \"exists\"\nmethod = \"GET\"\nurl = \"http://localhost/x\"\n";
     let p = write_collection("notfound", toml);
-    let code = headless::run(&cli(p.clone(), "nope"), "nope").await.unwrap();
+    let code = headless::run(&cli(p.clone(), "nope"), "nope")
+        .await
+        .unwrap();
     let _ = std::fs::remove_file(&p);
     assert_eq!(code, 3);
 }
@@ -75,10 +83,11 @@ async fn unknown_request_returns_three() {
 #[tokio::test]
 async fn transport_error_returns_four() {
     // Port 1 is not listening — connection refused → transport error.
-    let toml =
-        "[[requests]]\nname = \"dead\"\nmethod = \"GET\"\nurl = \"http://127.0.0.1:1/x\"\n";
+    let toml = "[[requests]]\nname = \"dead\"\nmethod = \"GET\"\nurl = \"http://127.0.0.1:1/x\"\n";
     let p = write_collection("transport", toml);
-    let code = headless::run(&cli(p.clone(), "dead"), "dead").await.unwrap();
+    let code = headless::run(&cli(p.clone(), "dead"), "dead")
+        .await
+        .unwrap();
     let _ = std::fs::remove_file(&p);
     assert_eq!(code, 4);
 }

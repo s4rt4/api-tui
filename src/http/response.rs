@@ -1,6 +1,7 @@
 use reqwest::header::HeaderMap;
 use std::time::Duration;
 
+#[derive(Debug)]
 pub struct Response {
     pub status: u16,
     pub elapsed: Duration,

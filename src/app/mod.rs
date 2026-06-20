@@ -104,7 +104,11 @@ impl App {
         if n == 0 {
             return;
         }
-        self.selected = if self.selected == 0 { n - 1 } else { self.selected - 1 };
+        self.selected = if self.selected == 0 {
+            n - 1
+        } else {
+            self.selected - 1
+        };
         self.response_scroll = 0;
     }
 
@@ -208,7 +212,11 @@ impl App {
             RequestField::Url => req.url.clone(),
             RequestField::Query => map_to_text(&req.query, '='),
             RequestField::Headers => map_to_text(&req.headers, ':'),
-            RequestField::Body => req.body.as_ref().map(|b| b.content.clone()).unwrap_or_default(),
+            RequestField::Body => req
+                .body
+                .as_ref()
+                .map(|b| b.content.clone())
+                .unwrap_or_default(),
             RequestField::Method => return false,
         };
         let lines: Vec<String> = if text.is_empty() {
@@ -383,7 +391,11 @@ mod tests {
             body: None,
         };
         let c = Collection {
-            requests: vec![mk("a", "GET", "/a"), mk("b", "POST", "/b"), mk("c", "GET", "/c")],
+            requests: vec![
+                mk("a", "GET", "/a"),
+                mk("b", "POST", "/b"),
+                mk("c", "GET", "/c"),
+            ],
             ..Default::default()
         };
         App::new(c, "default".into(), SendOpts::default())
@@ -552,7 +564,10 @@ mod tests {
             .insert_str("Authorization: Bearer xyz");
         app.commit_edit();
         assert_eq!(
-            app.collection.requests[0].headers.get("Authorization").map(String::as_str),
+            app.collection.requests[0]
+                .headers
+                .get("Authorization")
+                .map(String::as_str),
             Some("Bearer xyz")
         );
         assert!(app.dirty);
@@ -567,7 +582,10 @@ mod tests {
         app.editor.as_mut().unwrap().insert_str("page=2");
         app.commit_edit();
         assert_eq!(
-            app.collection.requests[0].query.get("page").map(String::as_str),
+            app.collection.requests[0]
+                .query
+                .get("page")
+                .map(String::as_str),
             Some("2")
         );
     }
@@ -601,7 +619,10 @@ mod tests {
     fn set_body_content_applies_and_clears() {
         let mut app = fixture();
         assert!(app.set_body_content("hi".into()));
-        assert_eq!(app.collection.requests[0].body.as_ref().unwrap().content, "hi");
+        assert_eq!(
+            app.collection.requests[0].body.as_ref().unwrap().content,
+            "hi"
+        );
         assert!(!app.set_body_content("hi".into())); // unchanged
         assert!(app.set_body_content("  ".into())); // blank clears
         assert!(app.collection.requests[0].body.is_none());

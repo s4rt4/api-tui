@@ -65,7 +65,10 @@ async fn query_params_encoded() {
     let resp = send(
         "GET",
         &url,
-        &[("page".into(), "2".into()), ("q".into(), "hello world".into())],
+        &[
+            ("page".into(), "2".into()),
+            ("q".into(), "hello world".into()),
+        ],
         &[],
         None,
         &opts(),
@@ -128,4 +131,38 @@ async fn measures_elapsed_time() {
     let url = format!("{}/slow", server.uri());
     let resp = send("GET", &url, &[], &[], None, &opts()).await.unwrap();
     assert!(resp.elapsed >= Duration::from_millis(50));
+}
+
+#[tokio::test]
+async fn timeout_has_friendly_message() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/hang"))
+        .respond_with(ResponseTemplate::new(200).set_delay(Duration::from_secs(3)))
+        .mount(&server)
+        .await;
+
+    let url = format!("{}/hang", server.uri());
+    let fast = SendOpts {
+        timeout: Duration::from_millis(150),
+        ..Default::default()
+    };
+    let err = send("GET", &url, &[], &[], None, &fast).await.unwrap_err();
+    assert!(
+        err.to_string().to_lowercase().contains("timed out"),
+        "got: {err}"
+    );
+}
+
+#[tokio::test]
+async fn connection_refused_has_friendly_message() {
+    // Port 1 is reserved and never listening → connection refused.
+    let err = send("GET", "http://127.0.0.1:1/x", &[], &[], None, &opts())
+        .await
+        .unwrap_err();
+    let msg = err.to_string().to_lowercase();
+    assert!(
+        msg.contains("refused") || msg.contains("connection failed"),
+        "got: {msg}"
+    );
 }

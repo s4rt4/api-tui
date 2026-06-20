@@ -15,20 +15,41 @@ pub fn render(frame: &mut Frame) {
             Style::default().add_modifier(Modifier::BOLD),
         )),
         Line::from(""),
-        Line::from(vec![key_label("↑/k"), Span::raw("    select prev / scroll up")]),
-        Line::from(vec![key_label("↓/j"), Span::raw("    select next / scroll down")]),
+        Line::from(vec![
+            key_label("↑/k"),
+            Span::raw("    select prev / scroll up"),
+        ]),
+        Line::from(vec![
+            key_label("↓/j"),
+            Span::raw("    select next / scroll down"),
+        ]),
         Line::from(vec![key_label("Tab"), Span::raw("    cycle panel")]),
         Line::from(vec![key_label("s  "), Span::raw("    send request")]),
         Line::from(vec![key_label("Esc"), Span::raw("    cancel in-flight")]),
-        Line::from(vec![key_label("h  "), Span::raw("    toggle response headers")]),
-        Line::from(vec![key_label("e  "), Span::raw("    edit field (URL/body/headers/query)")]),
-        Line::from(vec![key_label("E  "), Span::raw("    edit body in $EDITOR")]),
+        Line::from(vec![
+            key_label("h  "),
+            Span::raw("    toggle response headers"),
+        ]),
+        Line::from(vec![
+            key_label("e  "),
+            Span::raw("    edit field (URL/body/headers/query)"),
+        ]),
+        Line::from(vec![
+            key_label("E  "),
+            Span::raw("    edit body in $EDITOR"),
+        ]),
         Line::from(vec![key_label("m  "), Span::raw("    cycle method")]),
         Line::from(vec![key_label("a  "), Span::raw("    add request")]),
-        Line::from(vec![key_label("d  "), Span::raw("    delete request (confirm)")]),
+        Line::from(vec![
+            key_label("d  "),
+            Span::raw("    delete request (confirm)"),
+        ]),
         Line::from(vec![key_label("w  "), Span::raw("    save collection")]),
         Line::from(vec![key_label("?  "), Span::raw("    toggle this help")]),
-        Line::from(vec![key_label("q  "), Span::raw("    quit (confirm if dirty)")]),
+        Line::from(vec![
+            key_label("q  "),
+            Span::raw("    quit (confirm if dirty)"),
+        ]),
         Line::from(vec![key_label("^C "), Span::raw("    quit")]),
         Line::from(""),
         Line::from(Span::styled(

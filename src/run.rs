@@ -169,10 +169,7 @@ fn save_collection(app: &mut App) {
     match collection::save(&path, &app.collection) {
         Ok(()) => {
             app.dirty = false;
-            app.status_message = Some((
-                StatusKind::Info,
-                format!("saved {}", path.display()),
-            ));
+            app.status_message = Some((StatusKind::Info, format!("saved {}", path.display())));
         }
         Err(e) => {
             app.status_message = Some((StatusKind::Error, format!("save failed: {}", e)));

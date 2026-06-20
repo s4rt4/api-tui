@@ -398,7 +398,10 @@ mod tests {
         assert_eq!(app.input_mode, InputMode::Insert); // still editing
         handle_key(&mut app, key(KeyCode::Char('b')));
         handle_key(&mut app, key(KeyCode::Esc));
-        assert_eq!(app.collection.requests[0].body.as_ref().unwrap().content, "a\nb");
+        assert_eq!(
+            app.collection.requests[0].body.as_ref().unwrap().content,
+            "a\nb"
+        );
     }
 
     #[test]

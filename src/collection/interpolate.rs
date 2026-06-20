@@ -35,13 +35,19 @@ mod tests {
     use super::*;
 
     fn vars(pairs: &[(&str, &str)]) -> HashMap<String, String> {
-        pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect()
+        pairs
+            .iter()
+            .map(|(k, v)| (k.to_string(), v.to_string()))
+            .collect()
     }
 
     #[test]
     fn substitutes_known_var() {
         let v = vars(&[("token", "abc123")]);
-        assert_eq!(interpolate("Bearer {{token}}", &v).unwrap(), "Bearer abc123");
+        assert_eq!(
+            interpolate("Bearer {{token}}", &v).unwrap(),
+            "Bearer abc123"
+        );
     }
 
     #[test]

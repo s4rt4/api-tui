@@ -25,12 +25,20 @@ pub fn render(frame: &mut Frame, area: Rect, app: &App) {
     let lines: Vec<Line> = if let Some(req) = app.collection.requests.get(app.selected) {
         let mut out = vec![
             Line::from(vec![
-                label("Method  ", panel_active && app.active_field == RequestField::Method),
+                label(
+                    "Method  ",
+                    panel_active && app.active_field == RequestField::Method,
+                ),
                 Span::styled(
                     req.method.to_ascii_uppercase(),
                     Style::default().fg(method_color(&req.method)),
                 ),
-                Span::styled("   [m] cycle", Style::default().fg(Color::DarkGray).add_modifier(Modifier::DIM)),
+                Span::styled(
+                    "   [m] cycle",
+                    Style::default()
+                        .fg(Color::DarkGray)
+                        .add_modifier(Modifier::DIM),
+                ),
             ]),
             url_line(
                 req.url.as_str(),
@@ -48,12 +56,18 @@ pub fn render(frame: &mut Frame, area: Rect, app: &App) {
                 .collect::<Vec<_>>()
                 .join("&");
             out.push(Line::from(vec![
-                label("Query   ", panel_active && app.active_field == RequestField::Query),
+                label(
+                    "Query   ",
+                    panel_active && app.active_field == RequestField::Query,
+                ),
                 Span::raw(qs),
             ]));
         } else {
             out.push(Line::from(vec![
-                label("Query   ", panel_active && app.active_field == RequestField::Query),
+                label(
+                    "Query   ",
+                    panel_active && app.active_field == RequestField::Query,
+                ),
                 empty_marker(),
             ]));
         }
@@ -70,14 +84,20 @@ pub fn render(frame: &mut Frame, area: Rect, app: &App) {
             }
         } else {
             out.push(Line::from(vec![
-                label("Headers ", panel_active && app.active_field == RequestField::Headers),
+                label(
+                    "Headers ",
+                    panel_active && app.active_field == RequestField::Headers,
+                ),
                 empty_marker(),
             ]));
         }
 
         if let Some(body) = &req.body {
             out.push(Line::from(vec![
-                label("Body    ", panel_active && app.active_field == RequestField::Body),
+                label(
+                    "Body    ",
+                    panel_active && app.active_field == RequestField::Body,
+                ),
                 Span::styled(
                     format!("[{}]", body.kind),
                     Style::default().fg(Color::Yellow),
@@ -88,7 +108,10 @@ pub fn render(frame: &mut Frame, area: Rect, app: &App) {
             }
         } else {
             out.push(Line::from(vec![
-                label("Body    ", panel_active && app.active_field == RequestField::Body),
+                label(
+                    "Body    ",
+                    panel_active && app.active_field == RequestField::Body,
+                ),
                 empty_marker(),
             ]));
         }
@@ -100,7 +123,9 @@ pub fn render(frame: &mut Frame, area: Rect, app: &App) {
         ))]
     };
 
-    let para = Paragraph::new(lines).block(block).wrap(Wrap { trim: false });
+    let para = Paragraph::new(lines)
+        .block(block)
+        .wrap(Wrap { trim: false });
     frame.render_widget(para, area);
 }
 
@@ -124,7 +149,9 @@ fn render_editor(frame: &mut Frame, area: Rect, app: &App) {
 
 fn label(s: &str, active: bool) -> Span<'static> {
     let style = if active {
-        Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)
+        Style::default()
+            .fg(Color::Cyan)
+            .add_modifier(Modifier::BOLD)
     } else {
         Style::default().fg(Color::DarkGray)
     };
@@ -132,7 +159,12 @@ fn label(s: &str, active: bool) -> Span<'static> {
 }
 
 fn empty_marker() -> Span<'static> {
-    Span::styled("<empty>", Style::default().fg(Color::DarkGray).add_modifier(Modifier::DIM))
+    Span::styled(
+        "<empty>",
+        Style::default()
+            .fg(Color::DarkGray)
+            .add_modifier(Modifier::DIM),
+    )
 }
 
 fn url_line(url: &str, active: bool, insert: bool) -> Line<'static> {
@@ -141,7 +173,9 @@ fn url_line(url: &str, active: bool, insert: bool) -> Line<'static> {
     if insert {
         spans.push(Span::styled(
             "█",
-            Style::default().fg(Color::Cyan).add_modifier(Modifier::SLOW_BLINK),
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::SLOW_BLINK),
         ));
     }
     Line::from(spans)

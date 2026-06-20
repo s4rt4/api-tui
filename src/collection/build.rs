@@ -126,7 +126,8 @@ mod tests {
     #[test]
     fn interpolates_url_headers_query_body() {
         let mut r = req("GET", "/u/{{id}}");
-        r.headers.insert("Authorization".into(), "Bearer {{token}}".into());
+        r.headers
+            .insert("Authorization".into(), "Bearer {{token}}".into());
         r.query.insert("page".into(), "{{page}}".into());
         r.body = Some(crate::collection::model::Body {
             kind: "json".into(),
@@ -139,7 +140,10 @@ mod tests {
         env.insert("val".into(), "hello".into());
         let built = build_effective(&r, Some("https://x.com"), &env).unwrap();
         assert_eq!(built.url, "https://x.com/u/42");
-        assert_eq!(built.headers, vec![("Authorization".into(), "Bearer abc".into())]);
+        assert_eq!(
+            built.headers,
+            vec![("Authorization".into(), "Bearer abc".into())]
+        );
         assert_eq!(built.query, vec![("page".into(), "1".into())]);
         assert_eq!(built.body.as_deref(), Some("{\"x\": \"hello\"}"));
     }

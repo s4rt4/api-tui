@@ -25,12 +25,18 @@ pub fn render(frame: &mut Frame, area: Rect, app: &App) {
                 .add_modifier(Modifier::BOLD),
         ),
         Span::raw("  "),
-        Span::styled(name.to_string(), Style::default().add_modifier(Modifier::BOLD)),
+        Span::styled(
+            name.to_string(),
+            Style::default().add_modifier(Modifier::BOLD),
+        ),
         Span::styled(
             format!("  [{}]  ", path_str),
             Style::default().fg(Color::DarkGray),
         ),
-        Span::styled(format!("env={}", app.env), Style::default().fg(Color::Magenta)),
+        Span::styled(
+            format!("env={}", app.env),
+            Style::default().fg(Color::Magenta),
+        ),
         Span::styled(dirty.to_string(), Style::default().fg(Color::Yellow)),
     ]);
 

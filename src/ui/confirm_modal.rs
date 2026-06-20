@@ -58,7 +58,9 @@ pub fn render(frame: &mut Frame, confirm: Confirm) {
 fn key(label: &str) -> Span<'static> {
     Span::styled(
         label.to_string(),
-        Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+        Style::default()
+            .fg(Color::Yellow)
+            .add_modifier(Modifier::BOLD),
     )
 }
 

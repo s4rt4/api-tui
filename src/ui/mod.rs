@@ -39,13 +39,13 @@ pub fn render(frame: &mut Frame, app: &App) {
 }
 
 fn render_body(frame: &mut Frame, area: Rect, app: &App) {
-    let cols = Layout::horizontal([Constraint::Percentage(30), Constraint::Percentage(70)])
-        .split(area);
+    let cols =
+        Layout::horizontal([Constraint::Percentage(30), Constraint::Percentage(70)]).split(area);
 
     collection_panel::render(frame, cols[0], app);
 
-    let right = Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)])
-        .split(cols[1]);
+    let right =
+        Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)]).split(cols[1]);
 
     request_panel::render(frame, right[0], app);
     response_panel::render(frame, right[1], app);
