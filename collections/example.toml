@@ -1,0 +1,31 @@
+name        = "Example API"
+description = "Demo collection — httpbin.org"
+base_url    = "https://httpbin.org"
+
+[env.default]
+token = "Bearer dev-token"
+
+[[requests]]
+name   = "Get Status"
+method = "GET"
+url    = "/status/200"
+
+[[requests]]
+name    = "Echo JSON"
+method  = "POST"
+url     = "/anything"
+headers = { Authorization = "{{token}}", "Content-Type" = "application/json" }
+
+[requests.body]
+type    = "json"
+content = """
+{
+  "hello": "world"
+}
+"""
+
+[[requests]]
+name   = "Query Params"
+method = "GET"
+url    = "/get"
+query  = { page = "1", limit = "20" }
