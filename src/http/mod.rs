@@ -46,6 +46,9 @@ pub async fn send(
             reqwest::redirect::Policy::none()
         });
 
+    // An explicit --proxy wins; otherwise reqwest still honors the standard
+    // HTTP_PROXY / HTTPS_PROXY / NO_PROXY environment variables by default
+    // (we never call .no_proxy(), so env-based proxying works out of the box).
     if let Some(proxy_url) = &opts.proxy {
         builder = builder.proxy(reqwest::Proxy::all(proxy_url)?);
     }

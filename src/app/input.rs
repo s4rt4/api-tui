@@ -7,6 +7,8 @@ pub enum Action {
     Save,
     SaveAndQuit,
     EditExternal,
+    Export,
+    Yank,
 }
 
 pub fn handle_key(app: &mut App, key: KeyEvent) -> Option<Action> {
@@ -125,6 +127,20 @@ fn handle_normal(app: &mut App, key: KeyEvent) -> Option<Action> {
             None
         }
         KeyCode::Char('w') => Some(Action::Save),
+        KeyCode::Char('o') => {
+            if app.response.is_some() {
+                Some(Action::Export)
+            } else {
+                None
+            }
+        }
+        KeyCode::Char('y') => {
+            if app.response.is_some() {
+                Some(Action::Yank)
+            } else {
+                None
+            }
+        }
         KeyCode::Char('a') => {
             app.add_request();
             None

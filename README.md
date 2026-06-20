@@ -61,7 +61,7 @@ Exit codes:
 | `-t, --timeout <SECS>` | Request timeout (default 30) |
 | `-k, --insecure` | Skip TLS certificate verification |
 | `--no-redirect` | Don't follow redirects |
-| `--proxy <URL>` | HTTP/HTTPS proxy |
+| `--proxy <URL>` | HTTP/HTTPS proxy (otherwise `HTTP_PROXY`/`HTTPS_PROXY`/`NO_PROXY` env vars are honored) |
 | `--no-color` | Disable ANSI colors |
 | `--headless <NAME>` | Run one request non-interactively and exit |
 
@@ -80,6 +80,8 @@ Exit codes:
 | `a` | Add a request |
 | `d` | Delete the selected request (confirm) |
 | `w` | Save collection to its file |
+| `o` | Export response body to `<request-name>.json\|txt` |
+| `y` | Yank (copy) response body to the clipboard |
 | `h` | Toggle response headers |
 | `?` | Help |
 | `q` / `Ctrl-C` | Quit (confirms if there are unsaved changes) |

@@ -45,6 +45,14 @@ pub fn render(frame: &mut Frame) {
             Span::raw("    delete request (confirm)"),
         ]),
         Line::from(vec![key_label("w  "), Span::raw("    save collection")]),
+        Line::from(vec![
+            key_label("o  "),
+            Span::raw("    export response to file"),
+        ]),
+        Line::from(vec![
+            key_label("y  "),
+            Span::raw("    yank response to clipboard"),
+        ]),
         Line::from(vec![key_label("?  "), Span::raw("    toggle this help")]),
         Line::from(vec![
             key_label("q  "),

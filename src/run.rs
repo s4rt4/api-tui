@@ -61,6 +61,8 @@ pub async fn run_tui(cli: Cli) -> Result<()> {
                             }
                         }
                         Action::EditExternal => external_edit(&mut app, &mut tui)?,
+                        Action::Export => export_response(&mut app),
+                        Action::Yank => yank_response(&mut app),
                     }
                 }
                 if app.should_quit {
@@ -241,6 +243,67 @@ fn run_editor(content: &str) -> std::io::Result<Option<String>> {
     Ok(result)
 }
 
+/// Write the current response body (pretty-printed) to `<request-name>.json|txt`
+/// in the working directory.
+fn export_response(app: &mut App) {
+    let Some(resp) = &app.response else {
+        return;
+    };
+    let name = app
+        .collection
+        .requests
+        .get(app.selected)
+        .map(|r| r.name.as_str())
+        .unwrap_or("response");
+    let ext = if resp.is_json() { "json" } else { "txt" };
+    let filename = format!("{}.{}", sanitize_filename(name), ext);
+    match std::fs::write(&filename, resp.pretty_body()) {
+        Ok(()) => {
+            app.status_message = Some((StatusKind::Info, format!("exported → {}", filename)));
+        }
+        Err(e) => {
+            app.status_message = Some((StatusKind::Error, format!("export failed: {}", e)));
+        }
+    }
+}
+
+/// Copy the current response body to the system clipboard.
+fn yank_response(app: &mut App) {
+    let Some(resp) = &app.response else {
+        return;
+    };
+    let body = resp.pretty_body();
+    let result = arboard::Clipboard::new().and_then(|mut cb| cb.set_text(body));
+    match result {
+        Ok(()) => {
+            app.status_message = Some((StatusKind::Info, "response copied to clipboard".into()));
+        }
+        Err(e) => {
+            app.status_message = Some((StatusKind::Error, format!("clipboard failed: {}", e)));
+        }
+    }
+}
+
+/// Reduce an arbitrary request name to a safe filename stem.
+fn sanitize_filename(name: &str) -> String {
+    let cleaned: String = name
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    let trimmed = cleaned.trim_matches('_');
+    if trimmed.is_empty() {
+        "response".to_string()
+    } else {
+        trimmed.to_string()
+    }
+}
+
 fn handle_request_done(app: &mut App, result: Result<Response, ApiTesterError>) {
     app.is_loading = false;
     app.in_flight = None;
@@ -259,5 +322,26 @@ fn handle_request_done(app: &mut App, result: Result<Response, ApiTesterError>) 
         Err(e) => {
             app.status_message = Some((StatusKind::Error, format!("✗ {}", e)));
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::sanitize_filename;
+
+    #[test]
+    fn sanitize_replaces_unsafe_chars() {
+        assert_eq!(sanitize_filename("Get Status"), "Get_Status");
+        assert_eq!(sanitize_filename("user/by:id?x"), "user_by_id_x");
+    }
+
+    #[test]
+    fn sanitize_keeps_safe_chars() {
+        assert_eq!(sanitize_filename("get-user_01"), "get-user_01");
+    }
+
+    #[test]
+    fn sanitize_empty_falls_back() {
+        assert_eq!(sanitize_filename("///"), "response");
     }
 }
