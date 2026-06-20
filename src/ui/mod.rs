@@ -2,6 +2,7 @@ pub mod collection_panel;
 pub mod confirm_modal;
 pub mod header;
 pub mod help_modal;
+pub mod highlight;
 pub mod request_panel;
 pub mod response_panel;
 pub mod status_bar;

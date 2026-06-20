@@ -1,5 +1,5 @@
 use anyhow::Result;
-use apitester::{config::Cli, run};
+use apitester::{config::Cli, headless, run};
 use clap::Parser;
 
 #[tokio::main]
@@ -13,9 +13,9 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
     tracing::info!(?cli, "starting apitester");
 
-    if cli.headless.is_some() {
-        eprintln!("headless mode lands in M4");
-        std::process::exit(2);
+    if let Some(name) = cli.headless.clone() {
+        let code = headless::run(&cli, &name).await?;
+        std::process::exit(code);
     }
 
     run::run_tui(cli).await

@@ -23,6 +23,27 @@ impl Response {
             _ => StatusClass::Unknown,
         }
     }
+
+    /// True when the `Content-Type` advertises JSON.
+    pub fn is_json(&self) -> bool {
+        self.headers
+            .get("content-type")
+            .and_then(|v| v.to_str().ok())
+            .map(|s| s.contains("application/json"))
+            .unwrap_or(false)
+    }
+
+    /// Body pretty-printed when it is valid JSON, otherwise returned verbatim.
+    pub fn pretty_body(&self) -> String {
+        if self.is_json() {
+            if let Ok(val) = serde_json::from_str::<serde_json::Value>(&self.body) {
+                if let Ok(pretty) = serde_json::to_string_pretty(&val) {
+                    return pretty;
+                }
+            }
+        }
+        self.body.clone()
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

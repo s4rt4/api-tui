@@ -1,5 +1,6 @@
 use crate::app::{ActivePanel, App};
-use crate::http::{Response, StatusClass};
+use crate::http::StatusClass;
+use crate::ui::highlight;
 use crate::ui::style::panel_border;
 use ratatui::{
     layout::{Constraint, Layout, Rect},
@@ -105,8 +106,13 @@ pub fn render(frame: &mut Frame, area: Rect, app: &App) {
         idx += 1;
     }
 
-    let body_text = pretty_body(resp);
-    let body_para = Paragraph::new(body_text)
+    let pretty = resp.pretty_body();
+    let body_lines: Vec<Line> = if resp.is_json() {
+        highlight::highlight_json(&pretty)
+    } else {
+        pretty.lines().map(|l| Line::from(l.to_string())).collect()
+    };
+    let body_para = Paragraph::new(body_lines)
         .scroll((app.response_scroll, 0))
         .wrap(Wrap { trim: false });
     frame.render_widget(body_para, chunks[idx]);
@@ -158,20 +164,3 @@ fn format_bytes(n: usize) -> String {
     }
 }
 
-fn pretty_body(resp: &Response) -> String {
-    let is_json = resp
-        .headers
-        .get("content-type")
-        .and_then(|v| v.to_str().ok())
-        .map(|s| s.contains("application/json"))
-        .unwrap_or(false);
-
-    if is_json {
-        if let Ok(val) = serde_json::from_str::<serde_json::Value>(&resp.body) {
-            if let Ok(pretty) = serde_json::to_string_pretty(&val) {
-                return pretty;
-            }
-        }
-    }
-    resp.body.clone()
-}
