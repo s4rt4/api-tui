@@ -1,6 +1,7 @@
 use crate::collection::interpolate::interpolate;
 use crate::collection::model::{Collection, Request};
 use crate::error::ApiTesterError;
+use crate::http::{Part, PartKind, ReqBody};
 use std::collections::HashMap;
 
 pub struct EffectiveRequest {
@@ -8,7 +9,7 @@ pub struct EffectiveRequest {
     pub url: String,
     pub query: Vec<(String, String)>,
     pub headers: Vec<(String, String)>,
-    pub body: Option<String>,
+    pub body: Option<ReqBody>,
 }
 
 /// Merge `[env.default]` then `[env.<name>]` (active overrides default).
@@ -50,13 +51,15 @@ pub fn build_effective(
     }
 
     let body = match &req.body {
-        Some(b) => Some(interpolate(&b.content, env_vars)?),
         None => None,
+        Some(b) if b.kind.eq_ignore_ascii_case("multipart") => Some(build_multipart(b, env_vars)?),
+        Some(b) => Some(ReqBody::Text(interpolate(&b.content, env_vars)?)),
     };
 
     // Derive a Content-Type from the body's declared `kind` (json/form/xml/text)
-    // unless the request already sets one explicitly.
-    if body.is_some() {
+    // unless the request already sets one explicitly. Multipart is exempt:
+    // reqwest sets the Content-Type (with boundary) when sending the form.
+    if matches!(body, Some(ReqBody::Text(_))) {
         let has_ct = headers
             .iter()
             .any(|(k, _)| k.eq_ignore_ascii_case("content-type"));
@@ -74,6 +77,34 @@ pub fn build_effective(
         headers,
         body,
     })
+}
+
+/// Build the resolved multipart parts, interpolating names, text values, file
+/// paths, and filenames.
+fn build_multipart(
+    body: &crate::collection::model::Body,
+    env_vars: &HashMap<String, String>,
+) -> Result<ReqBody, ApiTesterError> {
+    let mut parts = Vec::with_capacity(body.parts.len());
+    for p in &body.parts {
+        let name = interpolate(&p.name, env_vars)?;
+        let kind = match &p.file {
+            Some(file) => PartKind::File {
+                path: interpolate(file, env_vars)?,
+                filename: match &p.filename {
+                    Some(f) => Some(interpolate(f, env_vars)?),
+                    None => None,
+                },
+                content_type: p.content_type.clone(),
+            },
+            None => {
+                let value = p.value.as_deref().unwrap_or("");
+                PartKind::Text(interpolate(value, env_vars)?)
+            }
+        };
+        parts.push(Part { name, kind });
+    }
+    Ok(ReqBody::Multipart(parts))
 }
 
 /// Map a body `kind` to its conventional Content-Type.
@@ -156,6 +187,7 @@ mod tests {
         r.body = Some(crate::collection::model::Body {
             kind: "json".into(),
             content: "{\"x\": \"{{val}}\"}".into(),
+            ..Default::default()
         });
         let mut env = HashMap::new();
         env.insert("id".into(), "42".into());
@@ -173,7 +205,7 @@ mod tests {
             ]
         );
         assert_eq!(built.query, vec![("page".into(), "1".into())]);
-        assert_eq!(built.body.as_deref(), Some("{\"x\": \"hello\"}"));
+        assert!(matches!(built.body, Some(ReqBody::Text(s)) if s == "{\"x\": \"hello\"}"));
     }
 
     fn req_with_body(kind: &str, content: &str) -> Request {
@@ -181,6 +213,7 @@ mod tests {
         r.body = Some(crate::collection::model::Body {
             kind: kind.into(),
             content: content.into(),
+            ..Default::default()
         });
         r
     }
@@ -228,6 +261,60 @@ mod tests {
             .headers
             .iter()
             .any(|(k, _)| k.eq_ignore_ascii_case("content-type")));
+    }
+
+    #[test]
+    fn multipart_body_builds_parts_and_no_content_type() {
+        use crate::collection::model::{Body, MultipartPart};
+        let mut r = req("POST", "/upload");
+        r.body = Some(Body {
+            kind: "multipart".into(),
+            content: String::new(),
+            parts: vec![
+                MultipartPart {
+                    name: "field".into(),
+                    value: Some("{{val}}".into()),
+                    ..Default::default()
+                },
+                MultipartPart {
+                    name: "doc".into(),
+                    file: Some("{{dir}}/a.txt".into()),
+                    filename: Some("renamed.txt".into()),
+                    content_type: Some("text/plain".into()),
+                    ..Default::default()
+                },
+            ],
+        });
+        let mut env = HashMap::new();
+        env.insert("val".into(), "hello".into());
+        env.insert("dir".into(), "/tmp".into());
+        let built = build_effective(&r, None, &env).unwrap();
+
+        // No auto Content-Type for multipart (reqwest adds it with a boundary).
+        assert!(!built
+            .headers
+            .iter()
+            .any(|(k, _)| k.eq_ignore_ascii_case("content-type")));
+
+        let parts = match built.body {
+            Some(ReqBody::Multipart(p)) => p,
+            other => panic!("expected multipart, got {other:?}"),
+        };
+        assert_eq!(parts.len(), 2);
+        assert_eq!(parts[0].name, "field");
+        assert!(matches!(&parts[0].kind, PartKind::Text(v) if v == "hello"));
+        match &parts[1].kind {
+            PartKind::File {
+                path,
+                filename,
+                content_type,
+            } => {
+                assert_eq!(path, "/tmp/a.txt"); // interpolated
+                assert_eq!(filename.as_deref(), Some("renamed.txt"));
+                assert_eq!(content_type.as_deref(), Some("text/plain"));
+            }
+            other => panic!("expected file part, got {other:?}"),
+        }
     }
 
     #[test]

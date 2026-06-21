@@ -136,6 +136,38 @@ content = """
 - **Interpolation**: `{{var}}` in URL, headers, query, and body is replaced from
   the resolved environment; an undefined variable is an error.
 
+### Body types
+
+`[requests.body]` takes a `type`: `json`, `form`, `xml`, `text` (or `raw`). The
+`Content-Type` is derived from the type unless you set one explicitly. For text
+bodies, use `content`:
+
+```toml
+[requests.body]
+type    = "form"
+content = "name=ada&role=admin"
+```
+
+**Multipart / file upload** — set `type = "multipart"` and list `[[requests.body.parts]]`.
+A part is either a text field (`value`) or a file (`file` path). `filename` and
+`content_type` are optional; the `Content-Type` (with boundary) is set
+automatically. `{{var}}` works in part names, values, paths, and filenames.
+
+```toml
+[requests.body]
+type = "multipart"
+
+[[requests.body.parts]]
+name  = "greeting"
+value = "hello"
+
+[[requests.body.parts]]
+name         = "doc"
+file         = "{{home}}/report.pdf"
+filename     = "report.pdf"
+content_type = "application/pdf"
+```
+
 ## Persistent state
 
 State is kept in the platform data directory:

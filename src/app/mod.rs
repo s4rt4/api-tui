@@ -396,12 +396,16 @@ impl App {
                         changed = true;
                     }
                 } else if req.body.as_ref().map(|b| b.content.as_str()) != Some(content.as_str()) {
-                    let kind = req
+                    let (kind, parts) = req
                         .body
                         .as_ref()
-                        .map(|b| b.kind.clone())
-                        .unwrap_or_else(|| "raw".into());
-                    req.body = Some(Body { kind, content });
+                        .map(|b| (b.kind.clone(), b.parts.clone()))
+                        .unwrap_or_else(|| ("raw".into(), Vec::new()));
+                    req.body = Some(Body {
+                        kind,
+                        content,
+                        parts,
+                    });
                     changed = true;
                 }
             }
@@ -438,12 +442,16 @@ impl App {
         if req.body.as_ref().map(|b| b.content.as_str()) == Some(content.as_str()) {
             return false;
         }
-        let kind = req
+        let (kind, parts) = req
             .body
             .as_ref()
-            .map(|b| b.kind.clone())
-            .unwrap_or_else(|| "raw".into());
-        req.body = Some(Body { kind, content });
+            .map(|b| (b.kind.clone(), b.parts.clone()))
+            .unwrap_or_else(|| ("raw".into(), Vec::new()));
+        req.body = Some(Body {
+            kind,
+            content,
+            parts,
+        });
         true
     }
 
@@ -672,6 +680,7 @@ mod tests {
         app.collection.requests[0].body = Some(Body {
             kind: "raw".into(),
             content: "x".into(),
+            ..Default::default()
         });
         app.active_panel = ActivePanel::RequestEditor;
         app.active_field = RequestField::Body;

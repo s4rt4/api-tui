@@ -24,6 +24,12 @@ pub enum ApiTesterError {
     #[error("io error: {0}")]
     Io(#[from] std::io::Error),
 
+    #[error("cannot read upload file '{path}': {source}")]
+    FileRead {
+        path: String,
+        source: std::io::Error,
+    },
+
     #[error("toml decode error: {0}")]
     TomlDe(#[from] toml::de::Error),
 

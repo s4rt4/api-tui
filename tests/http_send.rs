@@ -1,6 +1,6 @@
-use apitester::http::{send, SendOpts};
+use apitester::http::{send, Part, PartKind, ReqBody, SendOpts};
 use std::time::Duration;
-use wiremock::matchers::{body_string, header, method, path, query_param};
+use wiremock::matchers::{body_string, body_string_contains, header, method, path, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 fn opts() -> SendOpts {
@@ -37,17 +37,78 @@ async fn post_with_body_and_header() {
         .await;
 
     let url = format!("{}/echo", server.uri());
+    let body = ReqBody::Text("hi".into());
     let resp = send(
         "POST",
         &url,
         &[],
         &[("X-Test".into(), "yes".into())],
-        Some("hi"),
+        Some(&body),
         &opts(),
     )
     .await
     .unwrap();
     assert_eq!(resp.status, 201);
+}
+
+#[tokio::test]
+async fn multipart_sends_text_and_file_fields() {
+    let server = MockServer::start().await;
+    // Only matches (200) when the text value, file content, and filename all
+    // appear in the multipart body; otherwise wiremock returns a non-200.
+    Mock::given(method("POST"))
+        .and(path("/upload"))
+        .and(body_string_contains("v1"))
+        .and(body_string_contains("file-content-here"))
+        .and(body_string_contains("up.txt"))
+        .respond_with(ResponseTemplate::new(200))
+        .mount(&server)
+        .await;
+
+    let mut file = std::env::temp_dir();
+    file.push(format!("apitester-upload-{}.txt", std::process::id()));
+    std::fs::write(&file, "file-content-here").unwrap();
+
+    let body = ReqBody::Multipart(vec![
+        Part {
+            name: "field".into(),
+            kind: PartKind::Text("v1".into()),
+        },
+        Part {
+            name: "doc".into(),
+            kind: PartKind::File {
+                path: file.to_string_lossy().into_owned(),
+                filename: Some("up.txt".into()),
+                content_type: Some("text/plain".into()),
+            },
+        },
+    ]);
+
+    let url = format!("{}/upload", server.uri());
+    let resp = send("POST", &url, &[], &[], Some(&body), &opts())
+        .await
+        .unwrap();
+    let _ = std::fs::remove_file(&file);
+    assert_eq!(resp.status, 200);
+}
+
+#[tokio::test]
+async fn multipart_missing_file_is_file_read_error() {
+    let body = ReqBody::Multipart(vec![Part {
+        name: "doc".into(),
+        kind: PartKind::File {
+            path: "/no/such/file/definitely-missing.bin".into(),
+            filename: None,
+            content_type: None,
+        },
+    }]);
+    let err = send("POST", "http://localhost", &[], &[], Some(&body), &opts())
+        .await
+        .unwrap_err();
+    assert!(matches!(
+        err,
+        apitester::error::ApiTesterError::FileRead { .. }
+    ));
 }
 
 #[tokio::test]

@@ -49,7 +49,7 @@ pub async fn run(cli: &Cli, name: &str) -> Result<i32> {
         &built.url,
         &built.query,
         &built.headers,
-        built.body.as_deref(),
+        built.body.as_ref(),
         &opts,
     )
     .await;

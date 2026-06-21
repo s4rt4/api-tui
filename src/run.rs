@@ -159,7 +159,7 @@ fn spawn_send(app: &mut App, tx: &UnboundedSender<AppEvent>) {
             &built.url,
             &built.query,
             &built.headers,
-            built.body.as_deref(),
+            built.body.as_ref(),
             &opts,
         )
         .await;

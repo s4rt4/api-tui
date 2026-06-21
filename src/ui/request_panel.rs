@@ -103,8 +103,19 @@ pub fn render(frame: &mut Frame, area: Rect, app: &App) {
                     Style::default().fg(Color::Yellow),
                 ),
             ]));
-            for body_line in body.content.lines().take(20) {
-                out.push(Line::from(format!("  {}", body_line)));
+            if !body.parts.is_empty() {
+                for part in body.parts.iter().take(20) {
+                    let detail = match (&part.file, &part.value) {
+                        (Some(file), _) => format!("@{}", file),
+                        (None, Some(v)) => v.clone(),
+                        (None, None) => String::new(),
+                    };
+                    out.push(Line::from(format!("  {} = {}", part.name, detail)));
+                }
+            } else {
+                for body_line in body.content.lines().take(20) {
+                    out.push(Line::from(format!("  {}", body_line)));
+                }
             }
         } else {
             out.push(Line::from(vec![

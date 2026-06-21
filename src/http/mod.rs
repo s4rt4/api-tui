@@ -28,12 +28,36 @@ impl Default for SendOpts {
     }
 }
 
+/// The effective request body to send: a raw text payload, or a multipart form.
+#[derive(Debug, Clone)]
+pub enum ReqBody {
+    Text(String),
+    Multipart(Vec<Part>),
+}
+
+/// One resolved multipart field.
+#[derive(Debug, Clone)]
+pub struct Part {
+    pub name: String,
+    pub kind: PartKind,
+}
+
+#[derive(Debug, Clone)]
+pub enum PartKind {
+    Text(String),
+    File {
+        path: String,
+        filename: Option<String>,
+        content_type: Option<String>,
+    },
+}
+
 pub async fn send(
     method: &str,
     url: &str,
     query: &[(String, String)],
     headers: &[(String, String)],
-    body: Option<&str>,
+    body: Option<&ReqBody>,
     opts: &SendOpts,
 ) -> Result<Response, ApiTesterError> {
     let method_upper = method.to_ascii_uppercase();
@@ -69,8 +93,14 @@ pub async fn send(
     for (k, v) in headers {
         req = req.header(k, v);
     }
-    if let Some(b) = body {
-        req = req.body(b.to_owned());
+    match body {
+        Some(ReqBody::Text(text)) => {
+            req = req.body(text.clone());
+        }
+        Some(ReqBody::Multipart(parts)) => {
+            req = req.multipart(build_form(parts)?);
+        }
+        None => {}
     }
 
     let start = Instant::now();
@@ -86,4 +116,43 @@ pub async fn send(
         headers: resp_headers,
         body,
     })
+}
+
+/// Assemble a `multipart/form-data` form, reading any referenced files. reqwest
+/// sets the `Content-Type` (with boundary) itself, so callers must not.
+fn build_form(parts: &[Part]) -> Result<reqwest::multipart::Form, ApiTesterError> {
+    let mut form = reqwest::multipart::Form::new();
+    for part in parts {
+        match &part.kind {
+            PartKind::Text(value) => {
+                form = form.text(part.name.clone(), value.clone());
+            }
+            PartKind::File {
+                path,
+                filename,
+                content_type,
+            } => {
+                let bytes = std::fs::read(path).map_err(|e| ApiTesterError::FileRead {
+                    path: path.clone(),
+                    source: e,
+                })?;
+                let name = filename.clone().unwrap_or_else(|| file_name_of(path));
+                let mut fp = reqwest::multipart::Part::bytes(bytes).file_name(name);
+                if let Some(ct) = content_type {
+                    fp = fp.mime_str(ct)?;
+                }
+                form = form.part(part.name.clone(), fp);
+            }
+        }
+    }
+    Ok(form)
+}
+
+/// The final path component, or the whole string if it has no separator.
+fn file_name_of(path: &str) -> String {
+    path.rsplit(['/', '\\'])
+        .next()
+        .filter(|s| !s.is_empty())
+        .unwrap_or(path)
+        .to_string()
 }
