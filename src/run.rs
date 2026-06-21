@@ -5,6 +5,7 @@ use crate::app::{
 };
 use crate::collection::{self, build, model::Collection};
 use crate::config::Cli;
+use crate::cookies;
 use crate::error::ApiTesterError;
 use crate::history;
 use crate::http::{self, Response, SendOpts, StatusClass};
@@ -20,11 +21,17 @@ pub async fn run_tui(cli: Cli) -> Result<()> {
         Some(p) => collection::load(p)?,
         None => Collection::default(),
     };
+    let cookie_jar = if cli.no_cookies {
+        None
+    } else {
+        Some(cookies::load())
+    };
     let send_opts = SendOpts {
         timeout: cli.timeout_duration(),
         insecure: cli.insecure,
         follow_redirects: !cli.no_redirect,
         proxy: cli.proxy.clone(),
+        cookies: cookie_jar.clone(),
     };
     let mut app = App::new(collection, cli.env.clone(), send_opts);
     app.collection_path = cli.collection.clone();
@@ -77,6 +84,10 @@ pub async fn run_tui(cli: Cli) -> Result<()> {
             AppEvent::Quit => break,
         }
         tui.terminal.draw(|f| ui::render(f, &app))?;
+    }
+
+    if let Some(jar) = &cookie_jar {
+        cookies::save(jar);
     }
 
     Ok(())

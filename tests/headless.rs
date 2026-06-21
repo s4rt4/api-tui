@@ -18,6 +18,7 @@ fn cli(collection: PathBuf, name: &str) -> Cli {
         proxy: None,
         no_color: true,
         theme: Theme::Dark,
+        no_cookies: false,
         headless: Some(name.into()),
     }
 }

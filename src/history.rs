@@ -31,20 +31,11 @@ pub fn now_ms() -> u64 {
         .unwrap_or(0)
 }
 
-/// Path to the history file, creating its directory if needed. Honors the
-/// `APITESTER_DATA_DIR` override (used by tests and to relocate history),
-/// otherwise the platform data dir. `None` if no directory can be determined.
+/// Path to the history file, creating its directory if needed. `None` if no
+/// data directory can be determined. See [`crate::paths`] for the location and
+/// the `APITESTER_DATA_DIR` override.
 pub fn history_path() -> Option<PathBuf> {
-    let dir = match std::env::var_os("APITESTER_DATA_DIR") {
-        Some(d) => PathBuf::from(d),
-        None => directories::ProjectDirs::from("", "", "apitester")?
-            .data_dir()
-            .to_path_buf(),
-    };
-    if std::fs::create_dir_all(&dir).is_err() {
-        return None;
-    }
-    Some(dir.join("history.jsonl"))
+    crate::paths::data_file("history.jsonl")
 }
 
 /// Best-effort: append `entry` to the history file. Errors are swallowed since

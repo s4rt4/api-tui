@@ -64,6 +64,7 @@ Exit codes:
 | `--proxy <URL>` | HTTP/HTTPS proxy (otherwise `HTTP_PROXY`/`HTTPS_PROXY`/`NO_PROXY` env vars are honored) |
 | `--no-color` | Disable ANSI colors (also disables response syntax highlighting) |
 | `--theme <dark\|light>` | Syntax-highlight theme for the response viewer (default `dark`) |
+| `--no-cookies` | Disable the persistent cookie jar |
 | `--headless <NAME>` | Run one request non-interactively and exit |
 
 ## Keybindings
@@ -135,17 +136,23 @@ content = """
 - **Interpolation**: `{{var}}` in URL, headers, query, and body is replaced from
   the resolved environment; an undefined variable is an error.
 
-## History
+## Persistent state
 
-Every request you send (interactively or via `--headless`) is appended as one
-JSON line to `history.jsonl` in the platform data directory:
+State is kept in the platform data directory:
 
 - Linux: `~/.local/share/apitester/`
 - macOS: `~/Library/Application Support/apitester/`
 - Windows: `%APPDATA%\apitester\data\`
 
-Press `H` in the TUI to browse the most recent entries (newest first). Set
-`APITESTER_DATA_DIR` to override where the file lives.
+Set `APITESTER_DATA_DIR` to override the location of all of it.
+
+**History** (`history.jsonl`) — every request you send (interactively or via
+`--headless`) is appended as one JSON line. Press `H` in the TUI to browse the
+most recent entries (newest first).
+
+**Cookies** (`cookies.json`) — cookies set by responses are stored in a jar
+that is sent on subsequent requests and saved across runs. Pass `--no-cookies`
+to disable it entirely.
 
 ## Development
 

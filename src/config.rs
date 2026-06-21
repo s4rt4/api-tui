@@ -54,6 +54,10 @@ pub struct Cli {
     #[arg(long, value_enum, default_value_t = Theme::Dark)]
     pub theme: Theme,
 
+    /// Disable the persistent cookie jar
+    #[arg(long)]
+    pub no_cookies: bool,
+
     /// Run a single request non-interactively, print response, exit
     #[arg(long, value_name = "NAME")]
     pub headless: Option<String>,

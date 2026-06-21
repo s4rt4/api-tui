@@ -12,6 +12,8 @@ pub struct SendOpts {
     pub insecure: bool,
     pub follow_redirects: bool,
     pub proxy: Option<String>,
+    /// Shared cookie jar; when present, cookies are sent and captured.
+    pub cookies: Option<crate::cookies::Jar>,
 }
 
 impl Default for SendOpts {
@@ -21,6 +23,7 @@ impl Default for SendOpts {
             insecure: false,
             follow_redirects: true,
             proxy: None,
+            cookies: None,
         }
     }
 }
@@ -51,6 +54,10 @@ pub async fn send(
     // (we never call .no_proxy(), so env-based proxying works out of the box).
     if let Some(proxy_url) = &opts.proxy {
         builder = builder.proxy(reqwest::Proxy::all(proxy_url)?);
+    }
+
+    if let Some(jar) = &opts.cookies {
+        builder = builder.cookie_provider(jar.clone());
     }
 
     let client = builder.build()?;

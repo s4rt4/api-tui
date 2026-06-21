@@ -1,10 +1,12 @@
 pub mod app;
 pub mod collection;
 pub mod config;
+pub mod cookies;
 pub mod error;
 pub mod headless;
 pub mod history;
 pub mod http;
+pub mod paths;
 pub mod run;
 pub mod tui;
 pub mod ui;

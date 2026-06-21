@@ -29,11 +29,17 @@ pub async fn run(cli: &Cli, name: &str) -> Result<i32> {
     let env_vars = build::resolve_env(&coll, &cli.env);
     let built = build::build_effective(&req, coll.base_url.as_deref(), &env_vars)?;
 
+    let cookie_jar = if cli.no_cookies {
+        None
+    } else {
+        Some(crate::cookies::load())
+    };
     let opts = SendOpts {
         timeout: cli.timeout_duration(),
         insecure: cli.insecure,
         follow_redirects: !cli.no_redirect,
         proxy: cli.proxy.clone(),
+        cookies: cookie_jar.clone(),
     };
 
     eprintln!("→ {} {}", built.method, built.url);
@@ -58,7 +64,7 @@ pub async fn run(cli: &Cli, name: &str) -> Result<i32> {
         error: None,
     };
 
-    match result {
+    let code = match result {
         Ok(resp) => {
             entry.status = Some(resp.status);
             entry.elapsed_ms = Some(resp.elapsed.as_millis() as u64);
@@ -70,13 +76,23 @@ pub async fn run(cli: &Cli, name: &str) -> Result<i32> {
                 resp.size_bytes()
             );
             println!("{}", resp.pretty_body());
-            Ok(if resp.status < 400 { 0 } else { 1 })
+            if resp.status < 400 {
+                0
+            } else {
+                1
+            }
         }
         Err(e) => {
             entry.error = Some(e.to_string());
             crate::history::record(&entry);
             eprintln!("✗ {}", e);
-            Ok(4)
+            4
         }
+    };
+
+    if let Some(jar) = &cookie_jar {
+        crate::cookies::save(jar);
     }
+
+    Ok(code)
 }
