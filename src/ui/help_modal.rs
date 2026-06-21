@@ -54,6 +54,14 @@ pub fn render(frame: &mut Frame) {
             Span::raw("    yank response to clipboard"),
         ]),
         Line::from(vec![
+            key_label("/  "),
+            Span::raw("    search response body"),
+        ]),
+        Line::from(vec![
+            key_label("n/N"),
+            Span::raw("    next / prev search match"),
+        ]),
+        Line::from(vec![
             key_label("H  "),
             Span::raw("    view request history"),
         ]),

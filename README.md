@@ -84,6 +84,8 @@ Exit codes:
 | `o` | Export response body to `<request-name>.json\|txt` |
 | `y` | Yank (copy) response body to the clipboard |
 | `h` | Toggle response headers |
+| `/` | Search the response body (case-insensitive) |
+| `n` / `N` | Jump to next / previous search match |
 | `H` | View request history (persistent, newest first) |
 | `?` | Help |
 | `q` / `Ctrl-C` | Quit (confirms if there are unsaved changes) |

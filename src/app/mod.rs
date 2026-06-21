@@ -43,6 +43,15 @@ pub enum Confirm {
     DeleteRequest,
 }
 
+/// A committed body search: the query plus the body line indices that matched
+/// (case-insensitive) and which match is currently focused.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Search {
+    pub query: String,
+    pub matches: Vec<usize>,
+    pub current: usize,
+}
+
 pub struct App {
     pub collection_path: Option<PathBuf>,
     pub collection: Collection,
@@ -63,6 +72,10 @@ pub struct App {
     /// History viewer open; `history` holds the snapshot loaded when it opened.
     pub history_open: bool,
     pub history: Vec<HistoryEntry>,
+    /// Committed response-body search (for `n`/`N` navigation and highlighting).
+    pub search: Option<Search>,
+    /// `Some` while the user is typing a search query (`/`); holds the buffer.
+    pub search_input: Option<String>,
     pub confirm: Option<Confirm>,
     /// Active multi-line editor for the current field, present only in insert mode.
     pub editor: Option<TextArea<'static>>,
@@ -94,6 +107,8 @@ impl App {
             help_open: false,
             history_open: false,
             history: Vec::new(),
+            search: None,
+            search_input: None,
             confirm: None,
             editor: None,
             should_quit: false,
@@ -176,6 +191,101 @@ impl App {
         self.response_scroll = self.response_scroll.saturating_add(1);
     }
 
+    /// The response body split into lines, aligned 1:1 with what the response
+    /// panel renders. Empty when there is no response.
+    fn body_lines_text(&self) -> Vec<String> {
+        match &self.response {
+            Some(resp) => resp.pretty_body().lines().map(str::to_string).collect(),
+            None => Vec::new(),
+        }
+    }
+
+    /// Begin typing a body search (only meaningful with a response in view).
+    pub fn begin_search(&mut self) {
+        if self.active_panel == ActivePanel::ResponseViewer && self.response.is_some() {
+            self.search_input = Some(String::new());
+        }
+    }
+
+    pub fn search_input_push(&mut self, c: char) {
+        if let Some(buf) = self.search_input.as_mut() {
+            buf.push(c);
+        }
+    }
+
+    pub fn search_input_backspace(&mut self) {
+        if let Some(buf) = self.search_input.as_mut() {
+            buf.pop();
+        }
+    }
+
+    pub fn cancel_search_input(&mut self) {
+        self.search_input = None;
+    }
+
+    /// Commit the typed query: find matching body lines (case-insensitive) and
+    /// scroll to the first match. An empty query clears any active search.
+    pub fn commit_search(&mut self) {
+        let Some(query) = self.search_input.take() else {
+            return;
+        };
+        if query.is_empty() {
+            self.search = None;
+            return;
+        }
+        let needle = query.to_lowercase();
+        let matches: Vec<usize> = self
+            .body_lines_text()
+            .iter()
+            .enumerate()
+            .filter(|(_, l)| l.to_lowercase().contains(&needle))
+            .map(|(i, _)| i)
+            .collect();
+        let first = matches.first().copied();
+        self.search = Some(Search {
+            query,
+            matches,
+            current: 0,
+        });
+        if let Some(line) = first {
+            self.response_scroll = line as u16;
+        }
+    }
+
+    /// Move to the next match (wrapping), scrolling it into view.
+    pub fn search_next(&mut self) {
+        let line = match self.search.as_mut() {
+            Some(s) if !s.matches.is_empty() => {
+                s.current = (s.current + 1) % s.matches.len();
+                s.matches[s.current]
+            }
+            _ => return,
+        };
+        self.response_scroll = line as u16;
+    }
+
+    /// Move to the previous match (wrapping), scrolling it into view.
+    pub fn search_prev(&mut self) {
+        let line = match self.search.as_mut() {
+            Some(s) if !s.matches.is_empty() => {
+                s.current = if s.current == 0 {
+                    s.matches.len() - 1
+                } else {
+                    s.current - 1
+                };
+                s.matches[s.current]
+            }
+            _ => return,
+        };
+        self.response_scroll = line as u16;
+    }
+
+    /// Drop any active search and in-progress query input.
+    pub fn clear_search(&mut self) {
+        self.search = None;
+        self.search_input = None;
+    }
+
     /// Insert a new blank request just after the current selection (or at the
     /// front of an empty collection) and select it. Marks the collection dirty.
     pub fn add_request(&mut self) {
@@ -196,6 +306,7 @@ impl App {
         self.selected = idx;
         self.response = None;
         self.response_scroll = 0;
+        self.clear_search();
         self.dirty = true;
     }
 
@@ -211,6 +322,7 @@ impl App {
         }
         self.response = None;
         self.response_scroll = 0;
+        self.clear_search();
         self.dirty = true;
         true
     }
@@ -712,5 +824,95 @@ mod tests {
         app.response_scroll = 10;
         app.select_next();
         assert_eq!(app.response_scroll, 0);
+    }
+
+    fn app_with_body(body: &str) -> App {
+        let mut app = fixture();
+        app.active_panel = ActivePanel::ResponseViewer;
+        app.response = Some(Response {
+            status: 200,
+            elapsed: std::time::Duration::from_millis(1),
+            headers: reqwest::header::HeaderMap::new(),
+            body: body.to_string(),
+        });
+        app
+    }
+
+    #[test]
+    fn begin_search_requires_response_in_viewer() {
+        let mut app = fixture();
+        app.begin_search(); // no response, wrong panel
+        assert!(app.search_input.is_none());
+        let mut app = app_with_body("x");
+        app.begin_search();
+        assert_eq!(app.search_input.as_deref(), Some(""));
+    }
+
+    #[test]
+    fn commit_search_finds_matches_and_scrolls() {
+        let mut app = app_with_body("alpha\nbeta\nALPHA again\ngamma");
+        app.begin_search();
+        app.search_input = Some("alpha".into());
+        app.commit_search();
+        let s = app.search.as_ref().unwrap();
+        assert_eq!(s.matches, vec![0, 2]); // case-insensitive
+        assert_eq!(s.current, 0);
+        assert_eq!(app.response_scroll, 0);
+        assert!(app.search_input.is_none());
+    }
+
+    #[test]
+    fn search_next_prev_wrap_and_scroll() {
+        let mut app = app_with_body("hit\nmiss\nhit\nmiss\nhit");
+        app.search_input = Some("hit".into());
+        app.commit_search();
+        assert_eq!(app.search.as_ref().unwrap().matches, vec![0, 2, 4]);
+        app.search_next();
+        assert_eq!(app.search.as_ref().unwrap().current, 1);
+        assert_eq!(app.response_scroll, 2);
+        app.search_next();
+        app.search_next(); // wraps back to first
+        assert_eq!(app.search.as_ref().unwrap().current, 0);
+        assert_eq!(app.response_scroll, 0);
+        app.search_prev(); // wraps to last
+        assert_eq!(app.search.as_ref().unwrap().current, 2);
+        assert_eq!(app.response_scroll, 4);
+    }
+
+    #[test]
+    fn commit_empty_query_clears_search() {
+        let mut app = app_with_body("a\nb");
+        app.search = Some(Search {
+            query: "a".into(),
+            matches: vec![0],
+            current: 0,
+        });
+        app.search_input = Some(String::new());
+        app.commit_search();
+        assert!(app.search.is_none());
+    }
+
+    #[test]
+    fn no_match_keeps_empty_matches() {
+        let mut app = app_with_body("a\nb\nc");
+        app.search_input = Some("zzz".into());
+        app.commit_search();
+        assert!(app.search.as_ref().unwrap().matches.is_empty());
+        // navigation on empty matches is a no-op
+        app.search_next();
+        assert_eq!(app.search.as_ref().unwrap().current, 0);
+    }
+
+    #[test]
+    fn sending_clears_search() {
+        let mut app = app_with_body("a");
+        app.search = Some(Search {
+            query: "a".into(),
+            matches: vec![0],
+            current: 0,
+        });
+        app.clear_search();
+        assert!(app.search.is_none());
+        assert!(app.search_input.is_none());
     }
 }

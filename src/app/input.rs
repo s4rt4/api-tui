@@ -36,6 +36,11 @@ pub fn handle_key(app: &mut App, key: KeyEvent) -> Option<Action> {
         return None;
     }
 
+    if app.search_input.is_some() {
+        handle_search_input(app, key);
+        return None;
+    }
+
     match app.input_mode {
         InputMode::Normal => handle_normal(app, key),
         InputMode::Insert => {
@@ -76,6 +81,18 @@ fn handle_confirm(app: &mut App, confirm: Confirm, key: KeyEvent) -> Option<Acti
         }
     }
     None
+}
+
+/// While typing a search query: Enter commits, Esc cancels, Backspace deletes,
+/// printable chars extend the query.
+fn handle_search_input(app: &mut App, key: KeyEvent) {
+    match key.code {
+        KeyCode::Esc => app.cancel_search_input(),
+        KeyCode::Enter => app.commit_search(),
+        KeyCode::Backspace => app.search_input_backspace(),
+        KeyCode::Char(c) => app.search_input_push(c),
+        _ => {}
+    }
 }
 
 fn request_quit(app: &mut App) {
@@ -123,6 +140,18 @@ fn handle_normal(app: &mut App, key: KeyEvent) -> Option<Action> {
         }
         KeyCode::Char('H') => {
             app.open_history();
+            None
+        }
+        KeyCode::Char('/') => {
+            app.begin_search();
+            None
+        }
+        KeyCode::Char('n') => {
+            app.search_next();
+            None
+        }
+        KeyCode::Char('N') => {
+            app.search_prev();
             None
         }
         KeyCode::Char('s') => {
@@ -571,6 +600,57 @@ mod tests {
         handle_key(&mut app, key(KeyCode::Char('s')));
         assert_eq!(app.confirm, Some(Confirm::DeleteRequest));
         assert_eq!(app.collection.requests.len(), 1);
+    }
+
+    fn app_with_response(body: &str) -> App {
+        let mut app = app_with_request();
+        app.active_panel = ActivePanel::ResponseViewer;
+        app.response = Some(crate::http::Response {
+            status: 200,
+            elapsed: std::time::Duration::from_millis(1),
+            headers: reqwest::header::HeaderMap::new(),
+            body: body.to_string(),
+        });
+        app
+    }
+
+    #[test]
+    fn slash_starts_search_and_typing_commits() {
+        let mut app = app_with_response("foo\nbar\nfoobar");
+        handle_key(&mut app, key(KeyCode::Char('/')));
+        assert!(app.search_input.is_some());
+        handle_key(&mut app, key(KeyCode::Char('f')));
+        handle_key(&mut app, key(KeyCode::Char('o')));
+        handle_key(&mut app, key(KeyCode::Char('o')));
+        assert_eq!(app.search_input.as_deref(), Some("foo"));
+        handle_key(&mut app, key(KeyCode::Enter));
+        assert!(app.search_input.is_none());
+        assert_eq!(app.search.as_ref().unwrap().matches, vec![0, 2]);
+    }
+
+    #[test]
+    fn esc_cancels_search_input() {
+        let mut app = app_with_response("foo");
+        handle_key(&mut app, key(KeyCode::Char('/')));
+        handle_key(&mut app, key(KeyCode::Char('x')));
+        handle_key(&mut app, key(KeyCode::Esc));
+        assert!(app.search_input.is_none());
+        assert!(app.search.is_none());
+    }
+
+    #[test]
+    fn n_and_shift_n_navigate_matches() {
+        let mut app = app_with_response("hit\nx\nhit");
+        handle_key(&mut app, key(KeyCode::Char('/')));
+        handle_key(&mut app, key(KeyCode::Char('h')));
+        handle_key(&mut app, key(KeyCode::Char('i')));
+        handle_key(&mut app, key(KeyCode::Char('t')));
+        handle_key(&mut app, key(KeyCode::Enter));
+        assert_eq!(app.search.as_ref().unwrap().current, 0);
+        handle_key(&mut app, key(KeyCode::Char('n')));
+        assert_eq!(app.search.as_ref().unwrap().current, 1);
+        handle_key(&mut app, key(KeyCode::Char('N')));
+        assert_eq!(app.search.as_ref().unwrap().current, 0);
     }
 
     #[test]

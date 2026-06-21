@@ -107,15 +107,38 @@ pub fn render(frame: &mut Frame, area: Rect, app: &App) {
     }
 
     let pretty = resp.pretty_body();
-    let body_lines: Vec<Line> = if resp.is_json() {
+    let mut body_lines: Vec<Line> = if resp.is_json() {
         highlight::highlight_json(&pretty, app.light_theme, app.no_color)
     } else {
         pretty.lines().map(|l| Line::from(l.to_string())).collect()
     };
+    highlight_search_matches(&mut body_lines, app);
     let body_para = Paragraph::new(body_lines)
         .scroll((app.response_scroll, 0))
         .wrap(Wrap { trim: false });
     frame.render_widget(body_para, chunks[idx]);
+}
+
+/// Paint a background over body lines that matched the active search; the
+/// currently-focused match gets a brighter style than the rest.
+fn highlight_search_matches(lines: &mut [Line], app: &App) {
+    let Some(search) = &app.search else {
+        return;
+    };
+    let current_line = search.matches.get(search.current).copied();
+    for (i, line) in lines.iter_mut().enumerate() {
+        if !search.matches.contains(&i) {
+            continue;
+        }
+        let (bg, fg) = if Some(i) == current_line {
+            (Color::Yellow, Color::Black)
+        } else {
+            (Color::DarkGray, Color::White)
+        };
+        for span in line.spans.iter_mut() {
+            span.style = span.style.bg(bg).fg(fg);
+        }
+    }
 }
 
 fn status_class_color(class: StatusClass) -> Color {

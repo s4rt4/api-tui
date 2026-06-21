@@ -133,6 +133,7 @@ fn spawn_send(app: &mut App, tx: &UnboundedSender<AppEvent>) {
     app.is_loading = true;
     app.response = None;
     app.response_scroll = 0;
+    app.clear_search();
     app.status_message = Some((
         StatusKind::Info,
         format!("→ {} {}", built.method, built.url),
