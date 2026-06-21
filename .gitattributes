@@ -1,0 +1,10 @@
+# Treat PDFs (and other binaries) as binary so line-ending normalization
+# never corrupts them.
+*.pdf binary
+*.png binary
+*.ico binary
+
+# Rust/text sources keep native line endings on checkout.
+*.rs text
+*.toml text
+*.md text
