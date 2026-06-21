@@ -6,6 +6,7 @@ use crate::app::{
 use crate::collection::{self, build, model::Collection};
 use crate::config::Cli;
 use crate::error::ApiTesterError;
+use crate::history;
 use crate::http::{self, Response, SendOpts, StatusClass};
 use crate::tui::Tui;
 use crate::ui;
@@ -139,6 +140,7 @@ fn spawn_send(app: &mut App, tx: &UnboundedSender<AppEvent>) {
 
     let opts = app.send_opts.clone();
     let send_tx = tx.clone();
+    let req_name = req.name.clone();
     let handle = tokio::spawn(async move {
         let result = http::send(
             &built.method,
@@ -149,9 +151,31 @@ fn spawn_send(app: &mut App, tx: &UnboundedSender<AppEvent>) {
             &opts,
         )
         .await;
+        record_history(&req_name, &built.method, &built.url, &result);
         let _ = send_tx.send(AppEvent::RequestDone(result));
     });
     app.in_flight = Some(handle);
+}
+
+/// Append a finished send (success or transport error) to persistent history.
+fn record_history(name: &str, method: &str, url: &str, result: &Result<Response, ApiTesterError>) {
+    let mut entry = history::HistoryEntry {
+        ts_ms: history::now_ms(),
+        name: name.to_string(),
+        method: method.to_string(),
+        url: url.to_string(),
+        status: None,
+        elapsed_ms: None,
+        error: None,
+    };
+    match result {
+        Ok(resp) => {
+            entry.status = Some(resp.status);
+            entry.elapsed_ms = Some(resp.elapsed.as_millis() as u64);
+        }
+        Err(e) => entry.error = Some(e.to_string()),
+    }
+    history::record(&entry);
 }
 
 fn cancel_inflight(app: &mut App) {

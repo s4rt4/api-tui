@@ -3,6 +3,7 @@ pub mod confirm_modal;
 pub mod header;
 pub mod help_modal;
 pub mod highlight;
+pub mod history_modal;
 pub mod request_panel;
 pub mod response_panel;
 pub mod status_bar;
@@ -31,6 +32,10 @@ pub fn render(frame: &mut Frame, app: &App) {
 
     if app.help_open {
         help_modal::render(frame);
+    }
+
+    if app.history_open {
+        history_modal::render(frame, &app.history);
     }
 
     if let Some(confirm) = app.confirm {

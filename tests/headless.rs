@@ -5,6 +5,10 @@ use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 fn cli(collection: PathBuf, name: &str) -> Cli {
+    // Keep history writes out of the real user data dir during tests.
+    let mut data_dir = std::env::temp_dir();
+    data_dir.push(format!("apitester-test-data-{}", std::process::id()));
+    std::env::set_var("APITESTER_DATA_DIR", &data_dir);
     Cli {
         collection: Some(collection),
         env: "default".into(),

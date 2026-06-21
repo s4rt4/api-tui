@@ -84,6 +84,7 @@ Exit codes:
 | `o` | Export response body to `<request-name>.json\|txt` |
 | `y` | Yank (copy) response body to the clipboard |
 | `h` | Toggle response headers |
+| `H` | View request history (persistent, newest first) |
 | `?` | Help |
 | `q` / `Ctrl-C` | Quit (confirms if there are unsaved changes) |
 
@@ -131,6 +132,18 @@ content = """
   on top of it.
 - **Interpolation**: `{{var}}` in URL, headers, query, and body is replaced from
   the resolved environment; an undefined variable is an error.
+
+## History
+
+Every request you send (interactively or via `--headless`) is appended as one
+JSON line to `history.jsonl` in the platform data directory:
+
+- Linux: `~/.local/share/apitester/`
+- macOS: `~/Library/Application Support/apitester/`
+- Windows: `%APPDATA%\apitester\data\`
+
+Press `H` in the TUI to browse the most recent entries (newest first). Set
+`APITESTER_DATA_DIR` to override where the file lives.
 
 ## Development
 

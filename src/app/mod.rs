@@ -2,6 +2,7 @@ pub mod event;
 pub mod input;
 
 use crate::collection::model::{Body, Collection, Request};
+use crate::history::HistoryEntry;
 use crate::http::{Response, SendOpts};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -59,6 +60,9 @@ pub struct App {
     pub env: String,
     pub send_opts: SendOpts,
     pub help_open: bool,
+    /// History viewer open; `history` holds the snapshot loaded when it opened.
+    pub history_open: bool,
+    pub history: Vec<HistoryEntry>,
     pub confirm: Option<Confirm>,
     /// Active multi-line editor for the current field, present only in insert mode.
     pub editor: Option<TextArea<'static>>,
@@ -88,6 +92,8 @@ impl App {
             env,
             send_opts,
             help_open: false,
+            history_open: false,
+            history: Vec::new(),
             confirm: None,
             editor: None,
             should_quit: false,
@@ -124,6 +130,12 @@ impl App {
             ActivePanel::RequestEditor => ActivePanel::ResponseViewer,
             ActivePanel::ResponseViewer => ActivePanel::CollectionList,
         };
+    }
+
+    /// Load the most recent history entries and open the history viewer.
+    pub fn open_history(&mut self) {
+        self.history = crate::history::recent(100);
+        self.history_open = true;
     }
 
     pub fn select_field_next(&mut self) {

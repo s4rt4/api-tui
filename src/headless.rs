@@ -38,7 +38,7 @@ pub async fn run(cli: &Cli, name: &str) -> Result<i32> {
 
     eprintln!("→ {} {}", built.method, built.url);
 
-    match http::send(
+    let result = http::send(
         &built.method,
         &built.url,
         &built.query,
@@ -46,9 +46,23 @@ pub async fn run(cli: &Cli, name: &str) -> Result<i32> {
         built.body.as_deref(),
         &opts,
     )
-    .await
-    {
+    .await;
+
+    let mut entry = crate::history::HistoryEntry {
+        ts_ms: crate::history::now_ms(),
+        name: name.to_string(),
+        method: built.method.clone(),
+        url: built.url.clone(),
+        status: None,
+        elapsed_ms: None,
+        error: None,
+    };
+
+    match result {
         Ok(resp) => {
+            entry.status = Some(resp.status);
+            entry.elapsed_ms = Some(resp.elapsed.as_millis() as u64);
+            crate::history::record(&entry);
             eprintln!(
                 "← {} in {}ms ({} bytes)",
                 resp.status,
@@ -59,6 +73,8 @@ pub async fn run(cli: &Cli, name: &str) -> Result<i32> {
             Ok(if resp.status < 400 { 0 } else { 1 })
         }
         Err(e) => {
+            entry.error = Some(e.to_string());
+            crate::history::record(&entry);
             eprintln!("✗ {}", e);
             Ok(4)
         }

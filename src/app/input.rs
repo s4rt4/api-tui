@@ -26,6 +26,16 @@ pub fn handle_key(app: &mut App, key: KeyEvent) -> Option<Action> {
         return None;
     }
 
+    if app.history_open {
+        if matches!(
+            key.code,
+            KeyCode::Esc | KeyCode::Char('H') | KeyCode::Char('q')
+        ) {
+            app.history_open = false;
+        }
+        return None;
+    }
+
     match app.input_mode {
         InputMode::Normal => handle_normal(app, key),
         InputMode::Insert => {
@@ -109,6 +119,10 @@ fn handle_normal(app: &mut App, key: KeyEvent) -> Option<Action> {
         }
         KeyCode::Char('?') => {
             app.help_open = true;
+            None
+        }
+        KeyCode::Char('H') => {
+            app.open_history();
             None
         }
         KeyCode::Char('s') => {
@@ -267,6 +281,24 @@ mod tests {
         assert!(app.help_open);
         handle_key(&mut app, key(KeyCode::Esc));
         assert!(!app.help_open);
+    }
+
+    #[test]
+    fn history_toggle() {
+        let mut app = empty_app();
+        handle_key(&mut app, key(KeyCode::Char('H')));
+        assert!(app.history_open);
+        handle_key(&mut app, key(KeyCode::Esc));
+        assert!(!app.history_open);
+    }
+
+    #[test]
+    fn quit_blocked_when_history_open() {
+        let mut app = empty_app();
+        app.history_open = true;
+        handle_key(&mut app, key(KeyCode::Char('q')));
+        assert!(!app.should_quit);
+        assert!(!app.history_open);
     }
 
     #[test]

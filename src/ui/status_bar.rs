@@ -41,7 +41,7 @@ pub fn render_keys(frame: &mut Frame, area: Rect, app: &App) {
     } else if app.is_loading {
         styled_hints("[Esc] cancel  [Tab] panel  [?] help  [q] quit")
     } else {
-        styled_hints("[↑↓/jk] nav  [s] send  [e] edit  [E] $EDITOR  [m] method  [a] add  [d] del  [w] save  [o] export  [y] yank  [Tab] panel  [h] hdrs  [?] help  [q] quit")
+        styled_hints("[↑↓/jk] nav  [s] send  [e] edit  [E] $EDITOR  [m] method  [a] add  [d] del  [w] save  [o] export  [y] yank  [Tab] panel  [h] hdrs  [H] history  [?] help  [q] quit")
     };
     frame.render_widget(Paragraph::new(line), area);
 }

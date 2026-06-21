@@ -53,6 +53,10 @@ pub fn render(frame: &mut Frame) {
             key_label("y  "),
             Span::raw("    yank response to clipboard"),
         ]),
+        Line::from(vec![
+            key_label("H  "),
+            Span::raw("    view request history"),
+        ]),
         Line::from(vec![key_label("?  "), Span::raw("    toggle this help")]),
         Line::from(vec![
             key_label("q  "),
