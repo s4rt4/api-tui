@@ -1,4 +1,4 @@
-use apitester::config::Cli;
+use apitester::config::{Cli, Theme};
 use apitester::headless;
 use std::path::PathBuf;
 use wiremock::matchers::{method, path};
@@ -13,6 +13,7 @@ fn cli(collection: PathBuf, name: &str) -> Cli {
         no_redirect: false,
         proxy: None,
         no_color: true,
+        theme: Theme::Dark,
         headless: Some(name.into()),
     }
 }

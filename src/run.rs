@@ -27,6 +27,8 @@ pub async fn run_tui(cli: Cli) -> Result<()> {
     };
     let mut app = App::new(collection, cli.env.clone(), send_opts);
     app.collection_path = cli.collection.clone();
+    app.light_theme = cli.theme.is_light();
+    app.no_color = cli.no_color;
     if cli.insecure {
         app.status_message = Some((
             StatusKind::Warn,

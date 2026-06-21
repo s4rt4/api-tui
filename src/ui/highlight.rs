@@ -22,31 +22,53 @@ struct Cache {
     lines: Vec<Line<'static>>,
 }
 
-/// Highlight `text` as JSON into ratatui lines. Memoizes the most recent input.
-pub fn highlight_json(text: &str) -> Vec<Line<'static>> {
+/// Highlight `text` as JSON into ratatui lines, picking a light or dark theme.
+/// When `no_color` is set, returns plain unstyled lines. Memoizes the most
+/// recent (text, light, no_color) combination.
+pub fn highlight_json(text: &str, light: bool, no_color: bool) -> Vec<Line<'static>> {
+    let key = cache_key(text, light, no_color);
     let cache = CACHE.get_or_init(|| Mutex::new(Cache::default()));
     if !text.is_empty() {
         let guard = cache.lock().unwrap();
-        if guard.key == text {
+        if guard.key == key {
             return guard.lines.clone();
         }
     }
 
-    let lines = compute(text);
+    let lines = if no_color {
+        plain(text)
+    } else {
+        compute(text, light)
+    };
 
     let mut guard = cache.lock().unwrap();
-    guard.key = text.to_string();
+    guard.key = key;
     guard.lines = lines.clone();
     lines
 }
 
-fn compute(text: &str) -> Vec<Line<'static>> {
+fn cache_key(text: &str, light: bool, no_color: bool) -> String {
+    format!("{}|{}|{text}", light as u8, no_color as u8)
+}
+
+fn plain(text: &str) -> Vec<Line<'static>> {
+    LinesWithEndings::from(text)
+        .map(|line| Line::from(trim_eol(line).to_string()))
+        .collect()
+}
+
+fn compute(text: &str, light: bool) -> Vec<Line<'static>> {
     let ps = SYNTAXES.get_or_init(SyntaxSet::load_defaults_newlines);
     let ts = THEMES.get_or_init(ThemeSet::load_defaults);
     let syntax = ps
         .find_syntax_by_extension("json")
         .unwrap_or_else(|| ps.find_syntax_plain_text());
-    let theme = &ts.themes["base16-ocean.dark"];
+    let theme_name = if light {
+        "InspiredGitHub"
+    } else {
+        "base16-ocean.dark"
+    };
+    let theme = &ts.themes[theme_name];
     let mut highlighter = HighlightLines::new(syntax, theme);
 
     let mut out = Vec::new();
@@ -81,7 +103,7 @@ mod tests {
 
     #[test]
     fn highlights_json_into_lines() {
-        let lines = highlight_json("{\n  \"a\": 1\n}");
+        let lines = highlight_json("{\n  \"a\": 1\n}", false, false);
         assert_eq!(lines.len(), 3);
         // every non-empty line should carry at least one styled span
         assert!(lines.iter().all(|l| !l.spans.is_empty()));
@@ -89,13 +111,39 @@ mod tests {
 
     #[test]
     fn empty_input_yields_no_lines() {
-        assert!(highlight_json("").is_empty());
+        assert!(highlight_json("", false, false).is_empty());
     }
 
     #[test]
     fn second_call_same_input_is_cached() {
-        let a = highlight_json("{\"x\": true}");
-        let b = highlight_json("{\"x\": true}");
+        let a = highlight_json("{\"x\": true}", false, false);
+        let b = highlight_json("{\"x\": true}", false, false);
         assert_eq!(a.len(), b.len());
+    }
+
+    #[test]
+    fn light_theme_differs_from_dark() {
+        let json = "{\"k\": \"v\"}";
+        let dark = highlight_json(json, false, false);
+        let light = highlight_json(json, true, false);
+        let dark_fg = dark[0].spans.iter().map(|s| s.style.fg).collect::<Vec<_>>();
+        let light_fg = light[0]
+            .spans
+            .iter()
+            .map(|s| s.style.fg)
+            .collect::<Vec<_>>();
+        // Different themes should yield at least one differing foreground color.
+        assert_ne!(dark_fg, light_fg);
+    }
+
+    #[test]
+    fn no_color_yields_unstyled_lines() {
+        let lines = highlight_json("{\n  \"a\": 1\n}", false, true);
+        assert_eq!(lines.len(), 3);
+        for line in &lines {
+            for span in &line.spans {
+                assert_eq!(span.style.fg, None);
+            }
+        }
     }
 }

@@ -62,7 +62,8 @@ Exit codes:
 | `-k, --insecure` | Skip TLS certificate verification |
 | `--no-redirect` | Don't follow redirects |
 | `--proxy <URL>` | HTTP/HTTPS proxy (otherwise `HTTP_PROXY`/`HTTPS_PROXY`/`NO_PROXY` env vars are honored) |
-| `--no-color` | Disable ANSI colors |
+| `--no-color` | Disable ANSI colors (also disables response syntax highlighting) |
+| `--theme <dark\|light>` | Syntax-highlight theme for the response viewer (default `dark`) |
 | `--headless <NAME>` | Run one request non-interactively and exit |
 
 ## Keybindings

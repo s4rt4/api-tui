@@ -63,6 +63,10 @@ pub struct App {
     /// Active multi-line editor for the current field, present only in insert mode.
     pub editor: Option<TextArea<'static>>,
     pub should_quit: bool,
+    /// Use a light syntax-highlighting theme instead of the default dark one.
+    pub light_theme: bool,
+    /// Disable colored syntax highlighting in the response viewer.
+    pub no_color: bool,
 }
 
 impl App {
@@ -87,6 +91,8 @@ impl App {
             confirm: None,
             editor: None,
             should_quit: false,
+            light_theme: false,
+            no_color: false,
         }
     }
 

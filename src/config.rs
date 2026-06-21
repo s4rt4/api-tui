@@ -1,6 +1,20 @@
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 use std::time::Duration;
+
+/// Color theme for syntax highlighting in the response viewer.
+#[derive(ValueEnum, Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum Theme {
+    #[default]
+    Dark,
+    Light,
+}
+
+impl Theme {
+    pub fn is_light(self) -> bool {
+        matches!(self, Theme::Light)
+    }
+}
 
 #[derive(Parser, Debug)]
 #[command(
@@ -35,6 +49,10 @@ pub struct Cli {
     /// Disable ANSI colors
     #[arg(long)]
     pub no_color: bool,
+
+    /// Color theme for syntax highlighting
+    #[arg(long, value_enum, default_value_t = Theme::Dark)]
+    pub theme: Theme,
 
     /// Run a single request non-interactively, print response, exit
     #[arg(long, value_name = "NAME")]

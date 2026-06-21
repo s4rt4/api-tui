@@ -108,7 +108,7 @@ pub fn render(frame: &mut Frame, area: Rect, app: &App) {
 
     let pretty = resp.pretty_body();
     let body_lines: Vec<Line> = if resp.is_json() {
-        highlight::highlight_json(&pretty)
+        highlight::highlight_json(&pretty, app.light_theme, app.no_color)
     } else {
         pretty.lines().map(|l| Line::from(l.to_string())).collect()
     };
